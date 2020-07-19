@@ -17,6 +17,11 @@ function reset_units()
     global current_unit = μm
 end
 
+
+length_to_micron(x) = (global scale_wvl; scale_wvl * x)
+length_from_micron(x) = (global scale_wvl; x / scale_wvl)
+
+
 export set_unit_length
 
 end

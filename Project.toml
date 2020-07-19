@@ -1,4 +1,9 @@
 name = "OpticalConstants"
 uuid = "21c54ce8-2859-4f72-be0b-7b09504d539a"
 authors = ["soerenhm <sorenhm0@gmail.com>"]
-version = "0.1.0"
+version = "1.0.0"
+
+[deps]
+Dierckx = "39dd38d3-220a-591b-8e3c-4c3a8c710a94"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"

@@ -1,8 +1,4 @@
 
-length_to_micron(x) = Units.scale_wvl * x
-length_from_micron(x) = x / Units.scale_wvl
-
-
 
 ri_data_path(parts::AbstractString...) = joinpath(@__DIR__, "..", "data", "refractiveindex.info", parts...)
 
@@ -228,9 +224,9 @@ struct RefractiveIndex{T<:RIDataType}
     specs::Dict{Any,Any}
 end
 
-bounds(ri::RefractiveIndex) = length_from_micron(bounds(ri.data))
-get_ri(ri::RefractiveIndex, x) = get_ri(ri.data, length_to_micron(x))
-get_ec(ri::RefractiveIndex, x) = get_ec(ri.data, length_to_micron(x))
+bounds(ri::RefractiveIndex) =  Units.length_from_micron(bounds(ri.data))
+get_ri(ri::RefractiveIndex, x) = get_ri(ri.data, Units.length_to_micron(x))
+get_ec(ri::RefractiveIndex, x) = get_ec(ri.data, Units.length_to_micron(x))
 
 
 
