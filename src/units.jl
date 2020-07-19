@@ -30,8 +30,7 @@ end
 
 length_to_micron(x) = scale_wvl[] * x
 length_from_micron(x) = x / scale_wvl[]
-# length_to_micron(x) = (global scale_wvl; scale_wvl * x)
-# length_from_micron(x) = (global scale_wvl; x / scale_wvl)
+
 
 
 export set_unit_length

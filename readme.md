@@ -10,15 +10,15 @@ using OpticalConstants
 matches = ri_search("Au")
 println(matches)
 ```
-Several matches were found, returned as a vector of dictionaries:
+Several matches were found, returned as a vector of dictionaries (only a few of the keys are shown to save space):
 ```
 [{"material" => "Au", "name" => "Johnson and Christy 1972: n,k 0.188-1.937 µm", "page" => "Johnson", ...}, {"material" => "Au", "name" => "McPeak et al. 2015: n,k 0.3-1.7 µm", "page" => "McPeak", ...}, ...]
 ```
-Note that only a couple of keys were shown here to save space. From this list, we simply select the source(s) that we want. It's possible to narrow the search by providing an optional `page` argument during the search, e.g. `ri_search("Au", "Johnson")`.
+From this list, we simply select the source(s) that we want. It's possible to narrow the search by providing an optional `page` argument during the search, e.g. `ri_search("Au", "Johnson")`.
 
 
 ## Loading materials
-Reading the optical constants of a material is done using `load_ri`, which accepts one or several dictionaries returned from `ri_search`. To load the optical constants of gold (Au) from Johnson and Christie, do
+Reading the optical constants of a material is done using `load_ri`, which accepts one or several dictionaries returned from `ri_search`. To load the optical constants of gold (Au) from [Johnson and Christie](https://doi.org/10.1103/PhysRevB.6.4370), do
 ```
 Au = load_ri(ri_search("Au", "Johnson"))
 println(Au)

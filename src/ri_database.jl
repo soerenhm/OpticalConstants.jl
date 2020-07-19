@@ -19,7 +19,6 @@ function download_ri_lib()
 end
 
 function get_ri_lib()
-    # global ri_lib_path
     isfile(ri_lib_path) || download_ri_lib()
     ri_lib = YAML.load(open(ri_lib_path))
 
@@ -113,7 +112,6 @@ const ri_lib_meta = download_ri_database(; verbose=false)
 Returns all matches to refractive index data of `chemical_formula`.
 """
 function ri_search(chemical_formula::AbstractString)
-    # global ri_lib_meta
     if haskey(ri_lib_meta, chemical_formula)
         matches = copy(ri_lib_meta[chemical_formula])
         for match = matches
@@ -145,6 +143,7 @@ end
 
 
 # ============================================================================ #
+
 
 # supertype for various types of refractive index data
 abstract type RIDataType end
