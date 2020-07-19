@@ -56,7 +56,7 @@ const ri_lib = get_ri_lib()
     download_ri_database(; force_download::Bool, verbose::Bool) -> Dict
 
 Downloads the refractiveindex.info database from Github to the local drive.
-Returns search-indexing information.
+Returns search-indexing metadata.
 
 If `force_download` is false (default), files that already exists on the hard
 drive will not be downloaded again.
@@ -108,7 +108,6 @@ function download_ri_database(; force_download=false, verbose=true)
     YAML.write_file(ri_data_path("ri_lib_meta.yml"), ri_lib_meta)
     return ri_lib_meta
 end
-
 
 const ri_lib_meta = download_ri_database()
 
@@ -162,6 +161,8 @@ get_ri(d::tabulated_nk, x::Number) = Dierckx.evaluate(d.ri_interp, x)
 get_ec(d::tabulated_nk, x::Number) = Dierckx.evaluate(d.ec_interp, x)
 
 Base.show(io::IO, d::tabulated_nk) = print(io, "Tabulated n-k (", bounds(d)[1], " - ", bounds(d)[2], " μm); interpolation: ", typeof(d.ri_interp))
+
+# Implement also: `tabulated_n` (k = 0?) and `tabulated_k` (n = 1?)
 
 
 #====================
@@ -225,9 +226,9 @@ get_ec(ri::RefractiveIndex, x) = get_ec(ri.data, length_to_micron(x))
 
 function _tabulated_nk(data::Dict)
     lines = split(data["data"], "\n")
-    N = length(lines)
-    data_array = zeros(N-1, 3)  # last line is empty
-    for i = 1:N-1
+    N = length(lines)-1         # last line is empty
+    data_array = zeros(N, 3)
+    for i = 1:N
         data_array[i,:] .= parse.(Float64, split(lines[i]))
     end
     return tabulated_nk(data_array)
@@ -239,9 +240,12 @@ function _formula_1(data::Dict)
     return formula_1(coeffs, tuple(bounds...))
 end
 
+_formula_2 = _formula_1
+
 _ri_constructors = Dict(
     "tabulated nk" => _tabulated_nk,
     "formula 1" => _formula_1,
+    "formula 2" => _formula_2,
 )
 
 
@@ -270,7 +274,7 @@ end
 Ag = load_ri(ri_search("Ag", "Johnson"))
 SiO2 = load_ri(ri_search("SiO2", "Malitson"))
 
-Units.set_unit_length(Units.nm)
+# Units.set_unit_length(Units.nm)
 
 Ag_bnds = bounds(Ag)
 SiO2_bnds = bounds(SiO2)
