@@ -17,4 +17,6 @@ function reset_units()
     global current_unit = μm
 end
 
+export set_unit_length
+
 end

@@ -1,7 +1,4 @@
-import HTTP, YAML, Dierckx
 
-
-include("units.jl")
 length_to_micron(x) = Units.scale_wvl * x
 length_from_micron(x) = x / Units.scale_wvl
 
@@ -21,11 +18,13 @@ function download_ri_file(url, filename)
 end
 
 function download_ri_lib()
+    global ri_lib_path
     url = "https://raw.githubusercontent.com/polyanskiy/refractiveindex.info-database/master/database/library.yml"
     return download_ri_file(url, ri_lib_path)
 end
 
 function get_ri_lib()
+    global ri_lib_path
     isfile(ri_lib_path) || download_ri_lib()
     ri_lib = YAML.load(open(ri_lib_path))
 
@@ -62,6 +61,7 @@ If `force_download` is false (default), files that already exists on the hard
 drive will not be downloaded again.
 """
 function download_ri_database(; force_download=false, verbose=true)
+    global ri_lib
     verbose && println("Downloading refractiveindex.info database from: https://github.com/polyanskiy/refractiveindex.info-database/tree/master/database/data...\n")
 
     ri_lib_meta = Dict{String,Vector{Dict{String,String}}}()
@@ -109,12 +109,17 @@ function download_ri_database(; force_download=false, verbose=true)
     return ri_lib_meta
 end
 
-const ri_lib_meta = download_ri_database()
+const ri_lib_meta = download_ri_database(; verbose=false)
 
 
 
+"""
+    ri_search(chemical_formula::AbstractString) -> Vector
 
+Returns all matches to refractive index data of `chemical_formula`.
+"""
 function ri_search(chemical_formula::AbstractString)
+    global ri_lib_meta
     if haskey(ri_lib_meta, chemical_formula)
         return ri_lib_meta[chemical_formula]
     end
@@ -122,6 +127,11 @@ function ri_search(chemical_formula::AbstractString)
     return nothing
 end
 
+"""
+    ri_search(chemical_formula::AbstractString, page::AbstractString) -> Vector
+
+Match refractive index data with a given source, e.g. `ri_search("Ag", "Johnson")`.
+"""
 function ri_search(chemical_formula::AbstractString, page::AbstractString)
     all_matches = ri_search(chemical_formula)
     if !isnothing(all_matches)
@@ -271,15 +281,15 @@ end
 
 
 
-Ag = load_ri(ri_search("Ag", "Johnson"))
-SiO2 = load_ri(ri_search("SiO2", "Malitson"))
-
-# Units.set_unit_length(Units.nm)
-
-Ag_bnds = bounds(Ag)
-SiO2_bnds = bounds(SiO2)
-
-λ = LinRange(maximum([Ag_bnds[1], SiO2_bnds[1]]), minimum([Ag_bnds[2], SiO2_bnds[2]]), 100)
-
-using PyPlot; pygui(true)
-plot(λ, get_ri(SiO2, λ))
+# Ag = load_ri(ri_search("Ag", "Johnson"))
+# SiO2 = load_ri(ri_search("SiO2", "Malitson"))
+#
+# # Units.set_unit_length(Units.nm)
+#
+# Ag_bnds = bounds(Ag)
+# SiO2_bnds = bounds(SiO2)
+#
+# λ = LinRange(maximum([Ag_bnds[1], SiO2_bnds[1]]), minimum([Ag_bnds[2], SiO2_bnds[2]]), 100)
+#
+# using PyPlot; pygui(true)
+# plot(λ, get_ri(SiO2, λ))
