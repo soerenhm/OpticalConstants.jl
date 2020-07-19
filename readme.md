@@ -33,7 +33,7 @@ The description tells us that the refractive index data of gold is tabulated, bu
 
 
 ## The complex refractive index
-The real and imaginary parts of the complex refractive index of a material is obtained by calling `get_ri` and `get_ec`, respectively. As an example, let's gather 200 points equally spaced within the tabulated domain (0.1873 - 1.937 μm).
+The real and imaginary parts of the complex refractive index of a material is obtained by calling `get_ri` and `get_ec`, respectively. As an example, let's gather 200 points of the complex refractive index equally spaced on the tabulated domain of Johnson and Christies measurements of gold (0.1873 - 1.937 μm).
 ```
 λ = LinRange(bounds(Au)..., 200)
 ri = get_ri(Au, λ)
