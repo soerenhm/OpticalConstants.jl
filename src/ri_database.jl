@@ -1,4 +1,9 @@
-import HTTP, YAML
+import HTTP, YAML, Dierckx
+
+
+include("units.jl")
+length_to_micron(x) = Units.scale_wvl * x
+length_from_micron(x) = x / Units.scale_wvl
 
 
 
@@ -24,8 +29,7 @@ function get_ri_lib()
     isfile(ri_lib_path) || download_ri_lib()
     ri_lib = YAML.load(open(ri_lib_path))
 
-    ## fix 'bugs' in the library.yml
-
+    # fix 'bug' in the library.yml
     fix_keys = Dict("CO" => "CO1")
     _ri_lib = copy(ri_lib)
 
@@ -131,3 +135,147 @@ function ri_search(chemical_formula::AbstractString, page::AbstractString)
         return matches
     end
 end
+
+
+
+# ============================================================================ #
+
+
+abstract type RIDataType end
+
+get_ri(d::RIDataType, x::AbstractArray) = map(xi -> get_ri(d, xi), x)
+get_ec(d::RIDataType, x::AbstractArray) = map(xi -> get_ec(d, xi), x)
+
+
+struct tabulated_nk{I} <: RIDataType
+    data::Array{Float64,2}
+    ri_interp::I
+    ec_interp::I
+end
+
+tabulated_nk(data::Array{Float64,2}) =
+        tabulated_nk(data, Dierckx.Spline1D(data[:,1],data[:,2]),
+                           Dierckx.Spline1D(data[:,1],data[:,3]))
+
+bounds(d::tabulated_nk) = [d.data[1,1], d.data[end,1]]
+get_ri(d::tabulated_nk, x::Number) = Dierckx.evaluate(d.ri_interp, x)
+get_ec(d::tabulated_nk, x::Number) = Dierckx.evaluate(d.ec_interp, x)
+
+Base.show(io::IO, d::tabulated_nk) = print(io, "Tabulated n-k (", bounds(d)[1], " - ", bounds(d)[2], " μm); interpolation: ", typeof(d.ri_interp))
+
+
+#====================
+    Sellmeier 1
+====================#
+struct formula_1 <: RIDataType
+    coeffs::Vector{Float64}
+    bounds::Tuple{Float64,Float64}
+end
+
+bounds(f::formula_1) = [f.bounds...]
+
+function get_ri(f::formula_1, x::Number)
+    C = f.coeffs
+    rhs = C[1]
+    for i = 2:2:length(C)-1
+        rhs += C[i]*x^2/(x^2 - C[i+1]^2)
+    end
+    return sqrt(1 + rhs)
+end
+
+get_ec(formula_1, x::Number) = zero(x)
+
+
+#===================
+    Sellmeier 2
+===================#
+struct formula_2 <: RIDataType
+    coeffs::Vector{Float64}
+    bounds::Tuple{Float64,Float64}
+end
+
+bounds(f::formula_2) = [f.bounds...]
+
+function get_ri(f::formula_2, x::Number)
+    C = f.coeffs
+    rhs = C[1]
+    for i = 2:2:length(C)-1
+        rhs += C[i]*x^2/(x^2 - C[i+1])
+    end
+    return sqrt(1 + rhs)
+end
+
+get_ec(::formula_2, x::Number) = zero(x)
+
+
+
+
+struct RefractiveIndex{T<:RIDataType}
+    data::T
+    comments::String
+    reference::String
+    specs::Dict{Any,Any}
+end
+
+bounds(ri::RefractiveIndex) = length_from_micron(bounds(ri.data))
+get_ri(ri::RefractiveIndex, x) = get_ri(ri.data, length_to_micron(x))
+get_ec(ri::RefractiveIndex, x) = get_ec(ri.data, length_to_micron(x))
+
+
+
+function _tabulated_nk(data::Dict)
+    lines = split(data["data"], "\n")
+    N = length(lines)
+    data_array = zeros(N-1, 3)  # last line is empty
+    for i = 1:N-1
+        data_array[i,:] .= parse.(Float64, split(lines[i]))
+    end
+    return tabulated_nk(data_array)
+end
+
+function _formula_1(data::Dict)
+    bounds = parse.(Float64, split(data["wavelength_range"], " "))
+    coeffs = parse.(Float64, split(data["coefficients"], " "))
+    return formula_1(coeffs, tuple(bounds...))
+end
+
+_ri_constructors = Dict(
+    "tabulated nk" => _tabulated_nk,
+    "formula 1" => _formula_1,
+)
+
+
+function RefractiveIndex(ri_dict::Dict)
+    _ri_data, = ri_dict["DATA"]
+    type = _ri_data["type"]
+    ri_data = _ri_constructors[type](_ri_data)
+    comments = haskey(ri_dict, "COMMENTS") ? ri_dict["COMMENTS"] : ""
+    references = haskey(ri_dict, "REFERENCES") ? ri_dict["REFERENCES"] : ""
+    specs = haskey(ri_dict, "SPECS") ? ri_dict["SPECS"] : Dict()
+    return RefractiveIndex(ri_data, comments, references, specs)
+end
+
+
+load_ri(ri_match::Dict) = RefractiveIndex(YAML.load(open(ri_match["data"])))
+
+function load_ri(ri_matches::AbstractArray)
+    if length(ri_matches) == 1
+        return load_ri(first(ri_matches))
+    end
+    return [load_ri(ri_match) for ri_match = ri_matches]
+end
+
+
+
+Ag = load_ri(ri_search("Ag", "Johnson"))
+SiO2 = load_ri(ri_search("SiO2", "Malitson"))
+
+Units.set_unit_length(Units.nm)
+
+Ag_bnds = bounds(Ag)
+SiO2_bnds = bounds(SiO2)
+
+λ = LinRange(maximum([Ag_bnds[1], SiO2_bnds[1]]), minimum([Ag_bnds[2], SiO2_bnds[2]]), 100)
+
+using PyPlot; pygui(true)
+plot(λ, get_ri(SiO2, λ))
