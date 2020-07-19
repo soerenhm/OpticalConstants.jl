@@ -16,6 +16,18 @@ const current_unit = Ref(μm)
 const scale_wvl = Ref(1.0)
 
 
+"""
+    set_unit_length(x)
+
+Set the unit of length (default is μm).
+
+Predefined units: km, m, cm, mm, μm, nm, Å. To set nm as the default scale,
+call `set_unit_length(Units.nm)`.
+
+`x` may be in fact be any number for more exotic lenght scale; simply convert
+the scale to meters (SI units) and call `set_unit_length(x)`. For example,
+`Units.nm` is just the number `1e-9`.
+"""
 function set_unit_length(unit::Real)
     current_unit[] = unit
     scale_wvl[] = unit / default_unit

@@ -1,10 +1,14 @@
 
-
 ri_data_path(parts::AbstractString...) = joinpath(@__DIR__, "..", "data", "refractiveindex.info", parts...)
 
 const ri_lib_path = ri_data_path("library.yml")
 
 
+"""
+    download_ri_file(url, filename) -> HTTP.Response
+
+Downloads and writes a raw refractive index file from `url` to `filename`.
+"""
 function download_ri_file(url, filename)
     h = HTTP.request("GET", url)
     open(filename, "w") do io
@@ -46,7 +50,7 @@ const ri_lib = get_ri_lib()
 
 
 """
-    download_ri_database(; force_download::Bool, verbose::Bool) -> Dict
+    download_ri_database(; force_download=false, verbose=true) -> Dict
 
 Downloads the refractiveindex.info database from Github to the local drive.
 Returns search-indexing metadata.
@@ -231,9 +235,27 @@ struct RefractiveIndex{T<:RIDataType}
     specs::Dict{Any,Any}
 end
 
+"""
+    bounds(ri::RefractiveIndex) -> Vector
+
+Lower and upper bound on the wavelength where the refractive index is defined.
+"""
 bounds(ri::RefractiveIndex) =  Units.length_from_micron(bounds(ri.data))
+
+"""
+    get_ri(ri::RefractiveIndex, x)
+
+Refractive index evaluated at `x`.
+"""
 get_ri(ri::RefractiveIndex, x) = get_ri(ri.data, Units.length_to_micron(x))
+
+"""
+    get_ec(ri::RefractiveIndex, x)
+
+Extinction coefficient evaluated at `x`.
+"""
 get_ec(ri::RefractiveIndex, x) = get_ec(ri.data, Units.length_to_micron(x))
+
 
 Base.show(io::IO, ri::RefractiveIndex) = print(io, ri.material, ", ref: ", ri.reference, ".")
 function Base.show(io::IO, ::MIME"text/plain", ri::RefractiveIndex)
@@ -244,6 +266,10 @@ function Base.show(io::IO, ::MIME"text/plain", ri::RefractiveIndex)
 end
 
 
+
+#====================
+    constructors
+====================#
 
 function _tabulated_nk(data::Dict)
     lines = split(data["data"], "\n")
@@ -281,8 +307,18 @@ function RefractiveIndex(ri_dict::Dict, material::AbstractString)
 end
 
 
+"""
+    load_ri(dict) -> RefractiveIndex
+
+Return RefractiveIndex from dict (usually obtained from `ri_search`).
+"""
 load_ri(ri_match::Dict) = RefractiveIndex(YAML.load(open(ri_match["data"])), ri_match["material"])
 
+"""
+    load_ri(itr)
+
+Accepts an iterable of dicts; return an array of RefractiveIndex instaces.
+"""
 function load_ri(ri_matches::AbstractArray)
     if length(ri_matches) == 1
         return load_ri(first(ri_matches))
