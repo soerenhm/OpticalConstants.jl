@@ -14,13 +14,13 @@ function download_ri_file(url, filename)
 end
 
 function download_ri_lib()
-    global ri_lib_path
+    # global ri_lib_path
     url = "https://raw.githubusercontent.com/polyanskiy/refractiveindex.info-database/master/database/library.yml"
     return download_ri_file(url, ri_lib_path)
 end
 
 function get_ri_lib()
-    global ri_lib_path
+    # global ri_lib_path
     isfile(ri_lib_path) || download_ri_lib()
     ri_lib = YAML.load(open(ri_lib_path))
 
@@ -57,7 +57,7 @@ If `force_download` is false (default), files that already exists on the hard
 drive will not be downloaded again.
 """
 function download_ri_database(; force_download=false, verbose=true)
-    global ri_lib
+    # global ri_lib
     verbose && println("Downloading refractiveindex.info database from: https://github.com/polyanskiy/refractiveindex.info-database/tree/master/database/data...\n")
 
     ri_lib_meta = Dict{String,Vector{Dict{String,String}}}()
@@ -115,7 +115,7 @@ const ri_lib_meta = download_ri_database(; verbose=false)
 Returns all matches to refractive index data of `chemical_formula`.
 """
 function ri_search(chemical_formula::AbstractString)
-    global ri_lib_meta
+    # global ri_lib_meta
     if haskey(ri_lib_meta, chemical_formula)
         return ri_lib_meta[chemical_formula]
     end
