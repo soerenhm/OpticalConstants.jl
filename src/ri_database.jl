@@ -290,18 +290,3 @@ function load_ri(ri_matches::AbstractArray)
     end
     return [load_ri(ri_match) for ri_match = ri_matches]
 end
-
-
-
-# Ag = load_ri(ri_search("Ag", "Johnson"))
-# SiO2 = load_ri(ri_search("SiO2", "Malitson"))
-#
-# # Units.set_unit_length(Units.nm)
-#
-# Ag_bnds = bounds(Ag)
-# SiO2_bnds = bounds(SiO2)
-#
-# λ = LinRange(maximum([Ag_bnds[1], SiO2_bnds[1]]), minimum([Ag_bnds[2], SiO2_bnds[2]]), 100)
-#
-# using PyPlot; pygui(true)
-# plot(λ, get_ri(SiO2, λ))
