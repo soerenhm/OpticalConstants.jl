@@ -14,7 +14,6 @@ function download_ri_file(url, filename)
 end
 
 function download_ri_lib()
-    # global ri_lib_path
     url = "https://raw.githubusercontent.com/polyanskiy/refractiveindex.info-database/master/database/library.yml"
     return download_ri_file(url, ri_lib_path)
 end
@@ -57,7 +56,6 @@ If `force_download` is false (default), files that already exists on the hard
 drive will not be downloaded again.
 """
 function download_ri_database(; force_download=false, verbose=true)
-    # global ri_lib
     verbose && println("Downloading refractiveindex.info database from: https://github.com/polyanskiy/refractiveindex.info-database/tree/master/database/data...\n")
 
     ri_lib_meta = Dict{String,Vector{Dict{String,String}}}()
@@ -117,7 +115,11 @@ Returns all matches to refractive index data of `chemical_formula`.
 function ri_search(chemical_formula::AbstractString)
     # global ri_lib_meta
     if haskey(ri_lib_meta, chemical_formula)
-        return ri_lib_meta[chemical_formula]
+        matches = copy(ri_lib_meta[chemical_formula])
+        for match = matches
+            match["material"] = chemical_formula
+        end
+        return matches
     end
     println("Material not found; returning `nothing`...")
     return nothing
@@ -142,16 +144,18 @@ function ri_search(chemical_formula::AbstractString, page::AbstractString)
 end
 
 
-
 # ============================================================================ #
 
-
+# supertype for various types of refractive index data
 abstract type RIDataType end
 
 get_ri(d::RIDataType, x::AbstractArray) = map(xi -> get_ri(d, xi), x)
 get_ec(d::RIDataType, x::AbstractArray) = map(xi -> get_ec(d, xi), x)
 
 
+#====================
+    Tabulated nk
+====================#
 struct tabulated_nk{I} <: RIDataType
     data::Array{Float64,2}
     ri_interp::I
@@ -192,6 +196,8 @@ end
 
 get_ec(formula_1, x::Number) = zero(x)
 
+Base.show(io::IO, ::formula_1) = print(io, "Sellmeier 1")
+
 
 #===================
     Sellmeier 2
@@ -214,11 +220,13 @@ end
 
 get_ec(::formula_2, x::Number) = zero(x)
 
+Base.show(io::IO, ::formula_2) = print(io, "Sellmeier 2")
 
 
 
 struct RefractiveIndex{T<:RIDataType}
     data::T
+    material::String
     comments::String
     reference::String
     specs::Dict{Any,Any}
@@ -227,6 +235,14 @@ end
 bounds(ri::RefractiveIndex) =  Units.length_from_micron(bounds(ri.data))
 get_ri(ri::RefractiveIndex, x) = get_ri(ri.data, Units.length_to_micron(x))
 get_ec(ri::RefractiveIndex, x) = get_ec(ri.data, Units.length_to_micron(x))
+
+Base.show(io::IO, ri::RefractiveIndex) = print(io, ri.material, ", ref: ", ri.reference, ".")
+function Base.show(io::IO, ::MIME"text/plain", ri::RefractiveIndex)
+    print(io, ri.material, ", ", ri.data, ".")
+    print(io, "\n", "Ref: ", ri.reference, ".")
+    isempty(ri.comments) || print(io, "\n", "Comments: ", ri.comments, ".")
+    isempty(ri.specs) || print(io, "\n", "Specs: ", ri.specs, ".")
+end
 
 
 
@@ -255,18 +271,18 @@ _ri_constructors = Dict(
 )
 
 
-function RefractiveIndex(ri_dict::Dict)
+function RefractiveIndex(ri_dict::Dict, material::AbstractString)
     _ri_data, = ri_dict["DATA"]
     type = _ri_data["type"]
     ri_data = _ri_constructors[type](_ri_data)
     comments = haskey(ri_dict, "COMMENTS") ? ri_dict["COMMENTS"] : ""
     references = haskey(ri_dict, "REFERENCES") ? ri_dict["REFERENCES"] : ""
     specs = haskey(ri_dict, "SPECS") ? ri_dict["SPECS"] : Dict()
-    return RefractiveIndex(ri_data, comments, references, specs)
+    return RefractiveIndex(ri_data, material, comments, references, specs)
 end
 
 
-load_ri(ri_match::Dict) = RefractiveIndex(YAML.load(open(ri_match["data"])))
+load_ri(ri_match::Dict) = RefractiveIndex(YAML.load(open(ri_match["data"])), ri_match["material"])
 
 function load_ri(ri_matches::AbstractArray)
     if length(ri_matches) == 1
