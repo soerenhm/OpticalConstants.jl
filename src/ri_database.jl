@@ -317,7 +317,7 @@ load_ri(ri_match::Dict) = RefractiveIndex(YAML.load(open(ri_match["data"])), ri_
 """
     load_ri(itr)
 
-Accepts an iterable of dicts; return an array of RefractiveIndex instaces.
+Accepts an iterable of dicts; return array of RefractiveIndex instances.
 """
 function load_ri(ri_matches::AbstractArray)
     if length(ri_matches) == 1
