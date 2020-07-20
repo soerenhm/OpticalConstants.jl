@@ -23,6 +23,9 @@ end
 function plot_ri(elem)
     ri = load_ri(first(ri_search(elem[1:2]...)))
     x = LinRange(bounds(ri)..., 1_000)
+
+    println(ri.material, ", ", get_ri(ri, x[1]), ", ", get_ri(ri, x[end]), ".")
+
     figure()
     plot(x, get_ri(ri, x), label="ri")
     plot(x, get_ec(ri, x), label="ec")
