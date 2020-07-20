@@ -151,6 +151,8 @@ end
 
 # supertype for various types of refractive index data
 abstract type RIDataType end
+# abstract type RIDataTabulated <: RIDataType end
+# abstract type RIDataFormula <: RIDataType end
 
 get_ri(d::RIDataType, x::AbstractArray) = map(xi -> get_ri(d, xi), x)
 get_ec(d::RIDataType, x::AbstractArray) = map(xi -> get_ec(d, xi), x)
@@ -175,7 +177,39 @@ get_ec(d::tabulated_nk, x::Number) = Dierckx.evaluate(d.ec_interp, x)
 
 Base.show(io::IO, d::tabulated_nk) = print(io, "Tabulated n-k (", bounds(d)[1], " - ", bounds(d)[2], " μm); interpolation: ", typeof(d.ri_interp))
 
-# Implement also: `tabulated_n` (k = 0?) and `tabulated_k` (n = 1?)
+
+#===================
+    Tabulated n
+===================#
+struct tabulated_n{I} <: RIDataType
+    data::Array{Float64,2}
+    ri_interp::I
+end
+
+tabulated_n(data::Array{Float64,2}) = tabulated_n(data, Dierckx.Spline1D(data[:,1],data[:,2]))
+
+bounds(d::tabulated_n) = [d.data[1,1], d.data[end,1]]
+get_ri(d::tabulated_n, x::Number) = Dierckx.evaluate(d.ri_interp, x)
+get_ec(d::tabulated_n, x::Number) = zero(x)
+
+Base.show(io::IO, d::tabulated_n) = print(io, "Tabulated k (", bounds(d)[1], " - ", bounds(d)[2], " μm); interpolation: ", typeof(d.ri_interp))
+
+
+#===================
+    Tabulated k
+===================#
+struct tabulated_k{I} <: RIDataType
+    data::Array{Float64,2}
+    ec_interp::I
+end
+
+tabulated_k(data::Array{Float64,2}) = tabulated_k(data, Dierckx.Spline1D(data[:,1],data[:,2]))
+
+bounds(d::tabulated_k) = [d.data[1,1], d.data[end,1]]
+get_ri(d::tabulated_k, x::Number) = one(x)
+get_ec(d::tabulated_k, x::Number) = Dierckx.evaluate(d.ec_interp, x)
+
+Base.show(io::IO, d::tabulated_k) = print(io, "Tabulated k (", bounds(d)[1], " - ", bounds(d)[2], " μm); interpolation: ", typeof(d.ec_interp))
 
 
 #====================
@@ -199,7 +233,7 @@ end
 
 get_ec(formula_1, x::Number) = zero(x)
 
-Base.show(io::IO, ::formula_1) = print(io, "Sellmeier 1")
+Base.show(io::IO, f::formula_1) = print(io, "Sellmeier 1", " (", bounds(f)[1], " - ", bounds(f)[2], " μm)")
 
 
 #===================
@@ -223,7 +257,196 @@ end
 
 get_ec(::formula_2, x::Number) = zero(x)
 
-Base.show(io::IO, ::formula_2) = print(io, "Sellmeier 2")
+Base.show(io::IO, f::formula_2) = print(io, "Sellmeier 2", " (", bounds(f)[1], " - ", bounds(f)[2], " μm)")
+
+
+#==================
+    Polynomial
+==================#
+struct formula_3 <: RIDataType
+    coeffs::Vector{Float64}
+    bounds::Tuple{Float64,Float64}
+end
+
+bounds(f::formula_3) = [f.bounds...]
+
+function get_ri(f::formula_3, x::Number)
+    C = f.coeffs
+    rhs = C[1]
+    for i = 2:2:length(C)
+        rhs += C[i]*x^C[i+1]
+    end
+    return sqrt(rhs)
+end
+
+get_ec(f::formula_3, x::Number) = zero(x)
+
+Base.show(io::IO, f::formula_3) = print(io, "Polynomial", " (", bounds(f)[1], " - ", bounds(f)[2], " μm)")
+
+
+#=============================
+    RefractinveIndex.Info
+=============================#
+struct formula_4 <: RIDataType
+    coeffs::Vector{Float64}
+    bounds::Tuple{Float64,Float64}
+
+    function formula_4(coeffs::Vector{Float64}, bounds::Tuple{Float64,Float64})
+        n = length(coeffs)
+        length(coeffs) < 17 && (coeffs = [coeffs; zeros(17 - n)])
+        return new(coeffs, bounds)
+    end
+end
+
+bounds(f::formula_4) = [f.bounds...]
+
+function get_ri(f::formula_4, x::Number)
+    C = f.coeffs
+    rhs = C[1]
+    for i = 2:4:9
+        rhs += C[i]*x^C[i+1]/(x^2 - C[i+2]^C[i+3])
+    end
+    for i = 10:2:17
+        rhs += C[i]*x^C[i+1]
+    end
+    return sqrt(rhs)
+end
+
+get_ec(f::formula_4, x::Number) = zero(x)
+
+Base.show(io::IO, f::formula_4) = print(io, "RefractiveIndex.INFO", " (", bounds(f)[1], " - ", bounds(f)[2], " μm)")
+
+
+#==============
+    Cauchy
+==============#
+struct formula_5 <: RIDataType
+    coeffs::Vector{Float64}
+    bounds::Tuple{Float64,Float64}
+end
+
+bounds(f::formula_5) = [f.bounds...]
+
+function get_ri(f::formula_5, x::Number)
+    C = f.coeffs
+    rhs = C[1]
+    for i = 2:2:length(C)
+        rhs += C[i]*x^C[i+1]
+    end
+    return rhs
+end
+
+get_ec(f::formula_5, x::Number) = zero(x)
+
+Base.show(io::IO, f::formula_5) = print(io, "Cauchy", " (", bounds(f)[1], " - ", bounds(f)[2], " μm)")
+
+
+#=============
+    Gases
+=============#
+struct formula_6 <: RIDataType
+    coeffs::Vector{Float64}
+    bounds::Tuple{Float64,Float64}
+end
+
+bounds(f::formula_6) = [f.bounds...]
+
+function get_ri(f::formula_6, x::Number)
+    C = f.coeffs
+    rhs = C[1]
+    for i = 2:2:length(C)
+        rhs += C[i]/(C[i+1] - x^(-2))
+    end
+    return 1 + rhs
+end
+
+get_ec(f::formula_6, x::Number) = zero(x)
+
+Base.show(io::IO, f::formula_6) = print(io, "Gases", " (", bounds(f)[1], " - ", bounds(f)[2], " μm)")
+
+
+#==================
+    Herzberger
+==================#
+struct formula_7 <: RIDataType
+    coeffs::Vector{Float64}
+    bounds::Tuple{Float64,Float64}
+
+    function formula_7(coeffs::Vector{Float64}, bounds::Tuple{Float64,Float64})
+        n = length(coeffs)
+        n < 6 && (coeffs = [coeffs; zeros(6 - n)])
+        return new(coeffs, bounds)
+    end
+end
+
+bounds(f::formula_7) = [f.bounds...]
+
+function get_ri(f::formula_7, x::Number)
+    C = f.coeffs
+    rhs = C[1] + C[2]/(x^2 - 0.028) + C[3]/(x^2 - 0.028)^2
+    for (j, i) = enumerate(4:6)
+        rhs += C[i]*x^(2*j)
+    end
+    return rhs
+end
+
+get_ec(f::formula_7, x::Number) = zero(x)
+
+Base.show(io::IO, f::formula_7) = print(io, "Herzberger", " (", bounds(f)[1], " - ", bounds(f)[2], " μm)")
+
+
+#=============
+    Retro
+=============#
+struct formula_8 <: RIDataType
+    coeffs::Vector{Float64}
+    bounds::Tuple{Float64,Float64}
+
+    function formula_8(coeffs::Vector{Float64}, bounds::Tuple{Float64,Float64})
+        n = length(coeffs)
+        n < 4 && (coeffs = [coeffs; zeros(4-n)])
+        return new(coeffs, bounds)
+    end
+end
+
+bounds(f::formula_8) = [f.bounds...]
+
+function get_ri(f::formula_8, x::Number)
+    C = f.coeffs
+    rhs = C[1] + C[2]*x^2/(x^2-C[3]) + C[4]*x^2
+    return sqrt((1+2*rhs)/(1-rhs))
+end
+
+get_ec(f::formula_8, x::Number) = zero(x)
+
+Base.show(io::IO, f::formula_8) = print(io, "Retro", " (", bounds(f)[1], " - ", bounds(f)[2], " μm)")
+
+
+#==============
+    Exotic
+==============#
+struct formula_9 <: RIDataType
+    coeffs::Vector{Float64}
+    bounds::Tuple{Float64,Float64}
+
+    function formula_9(coeffs::Vector{Float64}, bounds::Tuple{Float64,Float64})
+        n = length(coeffs)
+        n < 6 && (coeffs = [coeffs; zeros(6-n)])
+        return new(coeffs, bounds)
+    end
+end
+
+bounds(f::formula_9) = [f.bounds...]
+
+function get_ri(f::formula_9, x::Number)
+    C = f.coeffs
+    rhs = C[1] + C[2]/(x^2-C[3]) + C[4]*(x - C[5])/((x-C[5])^2 + C[6])
+    return sqrt(rhs)
+end
+
+get_ec(f::formula_9, x::Number) = zero(x)
+
+Base.show(io::IO, f::formula_9) = print(io, "Exotic", " (", bounds(f)[1], " - ", bounds(f)[2], " μm)")
 
 
 
@@ -271,28 +494,58 @@ end
     constructors
 ====================#
 
-function _tabulated_nk(data::Dict)
-    lines = split(data["data"], "\n")
+function _data_string_to_array(str::AbstractString, ncols::Integer)
+    lines = split(str, "\n")
     N = length(lines)-1         # last line is empty
-    data_array = zeros(N, 3)
+    data_array = zeros(N, ncols)
     for i = 1:N
         data_array[i,:] .= parse.(Float64, split(lines[i]))
     end
-    return tabulated_nk(data_array)
+    return data_array
 end
 
-function _formula_1(data::Dict)
+# function _tabulated_nk(data::Dict)
+#     lines = split(data["data"], "\n")
+#     N = length(lines)-1         # last line is empty
+#     data_array = zeros(N, 3)
+#     for i = 1:N
+#         data_array[i,:] .= parse.(Float64, split(lines[i]))
+#     end
+#     return tabulated_nk(data_array)
+# end
+_tabulated_nk(data::Dict) = tabulated_nk(_data_string_to_array(data["data"], 3))
+_tabulated_n(data::Dict) = tabulated_n(_data_string_to_array(data["data"], 2))
+_tabulated_k(data::Dict) = tabulated_k(_data_string_to_array(data["data"], 2))
+
+function _data_string_to_formula(data::Dict)
     bounds = parse.(Float64, split(data["wavelength_range"], " "))
     coeffs = parse.(Float64, split(data["coefficients"], " "))
-    return formula_1(coeffs, tuple(bounds...))
+    return coeffs, tuple(bounds...)
 end
 
-_formula_2 = _formula_1
+_formula_1(data::Dict) = formula_1(_data_string_to_formula(data)...)
+_formula_2(data::Dict) = formula_2(_data_string_to_formula(data)...)
+_formula_3(data::Dict) = formula_3(_data_string_to_formula(data)...)
+_formula_4(data::Dict) = formula_4(_data_string_to_formula(data)...)
+_formula_5(data::Dict) = formula_5(_data_string_to_formula(data)...)
+_formula_6(data::Dict) = formula_6(_data_string_to_formula(data)...)
+_formula_7(data::Dict) = formula_7(_data_string_to_formula(data)...)
+_formula_8(data::Dict) = formula_8(_data_string_to_formula(data)...)
+_formula_9(data::Dict) = formula_9(_data_string_to_formula(data)...)
 
 _ri_constructors = Dict(
     "tabulated nk" => _tabulated_nk,
+    "tabulated n" => _tabulated_n,
+    "tabulated k" => _tabulated_k,
     "formula 1" => _formula_1,
     "formula 2" => _formula_2,
+    "formula 3" => _formula_3,
+    "formula 4" => _formula_4,
+    "formula 5" => _formula_5,
+    "formula 6" => _formula_6,
+    "formula 7" => _formula_7,
+    "formula 8" => _formula_8,
+    "formula 9" => _formula_9
 )
 
 
@@ -305,6 +558,7 @@ function RefractiveIndex(ri_dict::Dict, material::AbstractString)
     specs = haskey(ri_dict, "SPECS") ? ri_dict["SPECS"] : Dict()
     return RefractiveIndex(ri_data, material, comments, references, specs)
 end
+
 
 
 """
