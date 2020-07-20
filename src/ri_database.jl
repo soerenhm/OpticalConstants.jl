@@ -523,7 +523,7 @@ _formula_7(data::Dict) = formula_7(_data_string_to_formula(data)...)
 _formula_8(data::Dict) = formula_8(_data_string_to_formula(data)...)
 _formula_9(data::Dict) = formula_9(_data_string_to_formula(data)...)
 
-_ri_constructors = Dict(
+const _ri_constructors = Dict(
     "tabulated nk" => _tabulated_nk,
     "tabulated n" => _tabulated_n,
     "tabulated k" => _tabulated_k,
