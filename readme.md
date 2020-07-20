@@ -52,7 +52,3 @@ The print statement now yields
 ```
 [187.9, 1937.0]
 ```
-
-
-## TODO
-- Only a few refractive index data types are currently implemented; more needs to be done.
