@@ -504,25 +504,15 @@ function _data_string_to_array(str::AbstractString, ncols::Integer)
     return data_array
 end
 
-# function _tabulated_nk(data::Dict)
-#     lines = split(data["data"], "\n")
-#     N = length(lines)-1         # last line is empty
-#     data_array = zeros(N, 3)
-#     for i = 1:N
-#         data_array[i,:] .= parse.(Float64, split(lines[i]))
-#     end
-#     return tabulated_nk(data_array)
-# end
-_tabulated_nk(data::Dict) = tabulated_nk(_data_string_to_array(data["data"], 3))
-_tabulated_n(data::Dict) = tabulated_n(_data_string_to_array(data["data"], 2))
-_tabulated_k(data::Dict) = tabulated_k(_data_string_to_array(data["data"], 2))
-
 function _data_string_to_formula(data::Dict)
     bounds = parse.(Float64, split(data["wavelength_range"], " "))
     coeffs = parse.(Float64, split(data["coefficients"], " "))
     return coeffs, tuple(bounds...)
 end
 
+_tabulated_nk(data::Dict) = tabulated_nk(_data_string_to_array(data["data"], 3))
+_tabulated_n(data::Dict) = tabulated_n(_data_string_to_array(data["data"], 2))
+_tabulated_k(data::Dict) = tabulated_k(_data_string_to_array(data["data"], 2))
 _formula_1(data::Dict) = formula_1(_data_string_to_formula(data)...)
 _formula_2(data::Dict) = formula_2(_data_string_to_formula(data)...)
 _formula_3(data::Dict) = formula_3(_data_string_to_formula(data)...)
