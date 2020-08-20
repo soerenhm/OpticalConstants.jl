@@ -1,16 +1,16 @@
 # Optical constants
-Handy Julia package for reading optical data from [refractiveindex.info](https://refractiveindex.info/).
+Julia package for reading optical data from [refractiveindex.info](https://refractiveindex.info/).
 
 
 ## Searching materials
-Say we want to find all matches to Au (chemical formula for gold); we can write
+Say we are interested in the refractive index of Au (chemical formula for gold). With `ri_search`, we search the refractiveindex.info database for matches:
 ```
 using OpticalConstants
 
 matches = ri_search("Au")
 println(matches)
 ```
-Several matches were found, returned as a vector of dictionaries (only a few of the keys are shown to save space):
+The matches are returned as a vector of dictionaries (only a few of the keys are shown to save space):
 ```
 [{"material" => "Au", "name" => "Johnson and Christy 1972: n,k 0.188-1.937 µm", "page" => "Johnson", ...}, {"material" => "Au", "name" => "McPeak et al. 2015: n,k 0.3-1.7 µm", "page" => "McPeak", ...}, ...]
 ```
@@ -33,7 +33,7 @@ The description tells us that the refractive index data of gold is tabulated, bu
 
 
 ## The complex refractive index
-The real and imaginary parts of the complex refractive index of a material is obtained by calling `get_ri` and `get_ec`, respectively. As an example, let's gather 200 points of the complex refractive index equally spaced on the tabulated domain of Johnson and Christies measurements of gold (0.1873 - 1.937 μm).
+The real and imaginary parts of the complex refractive index of a material is obtained by calling `get_ri` and `get_ec`, respectively. As an example, let's gather 200 points of the complex refractive index equally spaced on the tabulated domain of Johnson and Christies measurements of gold (0.1879 - 1.937 μm).
 ```
 λ = LinRange(bounds(Au)..., 200)
 ri = get_ri(Au, λ)
