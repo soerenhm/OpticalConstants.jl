@@ -23,7 +23,10 @@ function download_ri_lib()
 end
 
 function get_ri_lib()
-    isfile(ri_lib_path) || download_ri_lib()
+    if !isfile(ri_lib_path)
+        mkpath(ri_data_path(""))
+        download_ri_lib()
+    end
     ri_lib = YAML.load(open(ri_lib_path))
 
     # fix 'bug' in the library.yml
