@@ -234,7 +234,7 @@ function get_ri(f::formula_1, x::Number)
     return sqrt(1 + rhs)
 end
 
-get_ec(formula_1, x::Number) = zero(x)
+get_ec(::formula_1, x::Number) = zero(x)
 
 Base.show(io::IO, f::formula_1) = print(io, "Sellmeier 1", " (", bounds(f)[1], " - ", bounds(f)[2], " μm)")
 
